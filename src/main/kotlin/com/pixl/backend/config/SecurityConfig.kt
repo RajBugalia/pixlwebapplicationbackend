@@ -1,4 +1,4 @@
-﻿package com.pixl.backend.config
+package com.pixl.backend.config
 
 import com.pixl.backend.security.jwt.AuthTokenFilter
 import com.pixl.backend.security.services.UserDetailsServiceImpl
@@ -63,8 +63,8 @@ class SecurityConfig(
                     "/favicon.ico"
                 ).permitAll()
                     .requestMatchers("/api/master/**").hasRole("MASTER")
-                    .requestMatchers("/api/admin/**", "/api/playlists/**", "/api/campaigns/**").hasAnyRole("ADMIN", "MASTER")
-                    .requestMatchers("/api/media/**").hasAnyRole("ADMIN", "MASTER")
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    .requestMatchers("/api/playlists/**", "/api/campaigns/**", "/api/media/**").hasAnyRole("ADMIN", "MASTER")
                     .anyRequest().authenticated()
             }
         http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter::class.java)

@@ -1,4 +1,4 @@
-﻿package com.pixl.backend.controller
+package com.pixl.backend.controller
 
 import com.pixl.backend.dto.*
 import com.pixl.backend.model.Role
@@ -34,6 +34,16 @@ class AuthController(
             
             val userDetails = authentication.principal as UserDetailsImpl
             val role = userDetails.authorities.firstOrNull()?.authority ?: "ROLE_ADMIN"
+
+            if (!loginRequest.scope.isNullOrBlank()) {
+                val reqScope = loginRequest.scope.trim().uppercase()
+                if (reqScope == "MASTER" && role != "ROLE_MASTER") {
+                    return ResponseEntity.status(403).body(mapOf("message" to "Access denied: You do not have Master Panel privileges. Please switch to the Admin Panel tab."))
+                }
+                if (reqScope == "ADMIN" && role != "ROLE_ADMIN") {
+                    return ResponseEntity.status(403).body(mapOf("message" to "Access denied: Master Administrator credentials cannot access Tenant Admin portal. Please switch to the Master Panel tab."))
+                }
+            }
 
             return ResponseEntity.ok(JwtResponse(jwt, userDetails.id, userDetails.username, userDetails.name ?: "", role))
         } catch (e: org.springframework.security.core.AuthenticationException) {
