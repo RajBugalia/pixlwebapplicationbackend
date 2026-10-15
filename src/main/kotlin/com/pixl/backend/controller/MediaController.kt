@@ -1,4 +1,4 @@
-﻿package com.pixl.backend.controller
+package com.pixl.backend.controller
 
 import com.pixl.backend.model.Media
 import com.pixl.backend.repository.MediaRepository
@@ -82,6 +82,23 @@ class MediaController(
             
         val mediaList = mediaRepository.findByUploaderId(userDetails.id)
         return ResponseEntity.ok(mediaList)
+    }
+
+    @PutMapping("/{id}/duration")
+    fun updateMediaDuration(@PathVariable id: Long, @org.springframework.web.bind.annotation.RequestBody body: Map<String, Any>): ResponseEntity<*> {
+        val userDetails = SecurityContextHolder.getContext().authentication?.principal as? UserDetailsImpl
+            ?: return ResponseEntity.status(401).body(mapOf("error" to "Unauthorized"))
+
+        val media = mediaRepository.findById(id).orElse(null)
+            ?: return ResponseEntity.notFound().build<Any>()
+
+        val rawDur = body["durationSeconds"] ?: body["duration"]
+        val duration = (rawDur as? Number)?.toInt() ?: rawDur?.toString()?.toIntOrNull() ?: 10
+
+        media.durationSeconds = duration
+        mediaRepository.save(media)
+
+        return ResponseEntity.ok(mapOf("id" to media.id, "durationSeconds" to media.durationSeconds))
     }
 
     @DeleteMapping("/{id}")

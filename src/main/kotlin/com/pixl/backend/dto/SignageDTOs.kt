@@ -1,8 +1,9 @@
-﻿package com.pixl.backend.dto
+package com.pixl.backend.dto
 
 data class CreatePlaylistRequest(
     val name: String,
-    val mediaIds: List<Long>
+    val mediaIds: List<Long>,
+    val mediaDurations: Map<Long, Int>? = null
 )
 
 data class ZoneConfigDto(

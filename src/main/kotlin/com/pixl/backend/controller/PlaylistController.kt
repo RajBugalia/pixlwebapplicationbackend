@@ -1,4 +1,4 @@
-﻿package com.pixl.backend.controller
+package com.pixl.backend.controller
 
 import com.pixl.backend.dto.CreatePlaylistRequest
 import com.pixl.backend.model.Playlist
@@ -31,7 +31,8 @@ class PlaylistController(
                         "id" to m.id,
                         "filename" to m.filename,
                         "type" to m.type,
-                        "publicUrl" to m.publicUrl
+                        "publicUrl" to m.publicUrl,
+                        "durationSeconds" to m.durationSeconds
                     )
                 }
             )
@@ -43,6 +44,14 @@ class PlaylistController(
     fun createPlaylist(@RequestBody request: CreatePlaylistRequest, principal: Principal): ResponseEntity<*> {
         val user = userRepository.findByEmail(principal.name).orElse(null)
         val mediaItems = mediaRepository.findAllById(request.mediaIds)
+        
+        request.mediaDurations?.forEach { (mediaId, duration) ->
+            val item = mediaItems.find { it.id == mediaId }
+            if (item != null && duration > 0) {
+                item.durationSeconds = duration
+                mediaRepository.save(item)
+            }
+        }
         
         val playlist = Playlist(
             name = request.name,
@@ -78,7 +87,7 @@ class PlaylistController(
     }
 
     @PutMapping("/{id}")
-    fun updatePlaylist(@PathVariable id: Long, @RequestBody request: Map<String, String>, principal: Principal): ResponseEntity<*> {
+    fun updatePlaylist(@PathVariable id: Long, @RequestBody request: Map<String, Any>, principal: Principal): ResponseEntity<*> {
         val user = userRepository.findByEmail(principal.name).orElse(null)
             ?: return ResponseEntity.status(401).body(mapOf("error" to "Unauthorized"))
 
@@ -86,15 +95,39 @@ class PlaylistController(
             ?: return ResponseEntity.notFound().build<Any>()
 
         if (playlist.creator?.id != user.id) {
-            return ResponseEntity.status(403).body(mapOf("error" to "Forbidden: Playlist does not belong to you"))
+            val currentUser = userRepository.findById(user.id).orElseThrow()
+            if (currentUser.role.name != "ROLE_MASTER") {
+                return ResponseEntity.status(403).body(mapOf("error" to "Forbidden: Playlist does not belong to you"))
+            }
         }
 
-        val newName = request["name"]
-        if (newName.isNullOrBlank()) {
-            return ResponseEntity.badRequest().body(mapOf("error" to "Name cannot be empty"))
+        val newName = request["name"] as? String
+        if (!newName.isNullOrBlank()) {
+            playlist.name = newName
         }
 
-        playlist.name = newName
+        val mediaIdsRaw = request["mediaIds"] as? List<*>
+        if (mediaIdsRaw != null) {
+            val mediaIds = mediaIdsRaw.mapNotNull { (it as? Number)?.toLong() }
+            val items = mediaRepository.findAllById(mediaIds)
+            playlist.mediaItems = items
+        }
+
+        val mediaDurations = request["mediaDurations"] as? Map<*, *>
+        if (mediaDurations != null) {
+            mediaDurations.forEach { (mIdRaw, durRaw) ->
+                val mId = (mIdRaw.toString()).toLongOrNull()
+                val dur = (durRaw as? Number)?.toInt() ?: (durRaw.toString()).toIntOrNull()
+                if (mId != null && dur != null && dur > 0) {
+                    val item = playlist.mediaItems.find { it.id == mId } ?: mediaRepository.findById(mId).orElse(null)
+                    if (item != null) {
+                        item.durationSeconds = dur
+                        mediaRepository.save(item)
+                    }
+                }
+            }
+        }
+
         playlistRepository.save(playlist)
 
         return ResponseEntity.ok(mapOf("message" to "Playlist updated successfully", "name" to playlist.name))

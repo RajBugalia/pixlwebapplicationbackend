@@ -1,4 +1,4 @@
-﻿package com.pixl.backend.model
+package com.pixl.backend.model
 
 import jakarta.persistence.*
 
@@ -15,7 +15,7 @@ data class Media(
     
     val type: String, // IMAGE or VIDEO
     
-    val durationSeconds: Int = 10,
+    var durationSeconds: Int = 10,
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uploader_id")
